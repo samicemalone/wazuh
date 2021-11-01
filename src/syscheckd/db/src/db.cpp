@@ -562,8 +562,7 @@ int fim_db_process_get_query(fdb_t* fim_sql,
 #ifndef WIN32
         fim_entry* entry = fim_db_decode_full_row(fim_sql->stmt[index]);
 #else
-        fim_entry* entry = type == FIM_TYPE_REGISTRY ? fim_db_decode_registry(index, fim_sql->stmt[index])
-                           : fim_db_decode_full_row(fim_sql->stmt[index]);
+        fim_entry* entry = fim_db_decode_full_row(fim_sql->stmt[index]);
 #endif
         callback(fim_sql, entry, storage, arg);
         free_entry(entry);
