@@ -781,40 +781,6 @@ int fim_db_get_row_registry_key(fdb_t* fim_sql, int mode, char** path);
 int fim_db_get_row_registry_data(fdb_t* fim_sql, int mode, char** path);
 
 /**
- * @brief Set all entries from registry_key table to unscanned.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_set_all_registry_key_unscanned();
-
-/**
- * @brief Set all entries from registry_data table to unscanned.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_set_all_registry_data_unscanned();
-
-/**
- * @brief Set a registry key as scanned.
- *
- * @param path Registry key path.
- * @param arch Architecture of the registry
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_set_registry_key_scanned(const char* path, unsigned int arch);
-
-/**
- * @brief Set a registry data as scanned.
- *
- * @param name Value name.
- * @param key_id key_id of the registry data table.
- * @param file_path File path.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
- */
-int fim_db_set_registry_data_scanned(const char* name, unsigned int key_id);
-
-/**
  * @brief Get count of all entries in registry data table.
  *
  * @return Number of entries in registry data table.
