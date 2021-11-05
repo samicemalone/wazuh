@@ -159,7 +159,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.extra_valid_requested = False
 
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
-        default_date = datetime.fromtimestamp(0)
+        default_date = datetime.utcfromtimestamp(0)
         self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
         self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
                                       'date_end_master': default_date, 'total_extra_valid': 0,
@@ -235,7 +235,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
             return cmd, json.dumps(res,
-                                   default=lambda o: "n/a" if isinstance(o, datetime) and o == datetime.fromtimestamp(0)
+                                   default=lambda o: "n/a" if isinstance(o,
+                                                                         datetime) and o == datetime.utcfromtimestamp(0)
                                    else (o.__str__() if isinstance(o, datetime) else None)
                                    ).encode()
         elif command == b'sendsync':
@@ -614,6 +615,61 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                       ).total_seconds(), result['updated_chunks']))
 
         return response
+
+    async def sync_worker_files(self, task_id: str, received_file: asyncio.Event, logger):
+        """Wait until extra valid files are received from the worker and process them.
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID to which the file was sent.
+        received_file : asyncio.Event
+            Asyncio event that is holding a lock while the files are not received.
+        logger : Logger object
+            Logger to use (can't use self since one of the task loggers will be used).
+        """
+        logger.debug("Waiting to receive zip file from worker.")
+        await asyncio.wait_for(received_file.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+
+        # Full path where the zip sent by the worker is located.
+        received_filename = self.sync_tasks[task_id].filename
+        if isinstance(received_filename, Exception):
+            raise received_filename
+
+        logger.debug(f"Received file from worker: '{received_filename}'")
+
+        # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.decompress_files(received_filename)
+        logger.debug(f"Received {len(files_metadata)} files to check.")
+        try:
+            # Unmerge unzipped files to their destination path inside /var/ossec/ if their modification time is newer.
+            await self.process_files_from_worker(files_metadata, decompressed_files_path, logger)
+        finally:
+            shutil.rmtree(decompressed_files_path)
+
+    async def sync_extra_valid(self, task_id: str, received_file: asyncio.Event):
+        """Run extra valid sync process and set up necessary parameters.
+
+        Parameters
+        ----------
+        task_id : str
+            ID of the asyncio task in charge of doing the sync process.
+        received_file : asyncio.Event
+            Asyncio event that is holding a lock while the files are not received.
+        """
+        logger = self.task_loggers['Integrity sync']
+        await self.sync_worker_files(task_id, received_file, logger)
+        self.integrity_sync_status['date_end_master'] = datetime.now()
+        logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
+                                                   self.integrity_sync_status[
+                                                       'tmp_date_start_master']).total_seconds()))
+        self.integrity_sync_status['date_start_master'] = \
+            self.integrity_sync_status['tmp_date_start_master'].strftime(decimals_date_format)
+        self.integrity_sync_status['date_end_master'] = \
+            self.integrity_sync_status['date_end_master'].strftime(decimals_date_format)
+        self.extra_valid_requested = False
+        self.sync_integrity_free = True
 
     async def sync_integrity(self, task_id: str, received_file: asyncio.Event):
         """Perform the integrity synchronization process by comparing local and received files.
