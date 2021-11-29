@@ -94,6 +94,7 @@ api_config_schema = {
             "properties": {
                 "level": {"type": "string"},
                 "path": {"type": "string"},
+                "format": {"type": "string", "enum": ["plain", "json"]}
             },
         },
         "cors": {

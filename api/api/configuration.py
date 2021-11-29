@@ -46,7 +46,8 @@ default_api_configuration = {
     },
     "logs": {
         "level": "info",
-        "path": "logs/api.log"
+        "path": "logs",
+        "format": "plain"
     },
     "cors": {
         "enabled": False,

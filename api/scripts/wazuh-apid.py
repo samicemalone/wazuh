@@ -61,7 +61,8 @@ def start(foreground, root, config_file):
         configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
     security_conf = configuration.security_conf
-    log_path = api_conf['logs']['path']
+    log_ext = '.json' if api_conf['logs']['format'] == 'json' else '.log'
+    log_path = os.path.join(api_conf['logs']['path'], f'api{log_ext}')
 
     # Set up logger
     set_logging(log_path=log_path, debug_mode=api_conf['logs']['level'], foreground_mode=foreground)
