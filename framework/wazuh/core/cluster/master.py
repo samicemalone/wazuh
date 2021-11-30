@@ -12,7 +12,6 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from functools import partial
-from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
@@ -530,7 +529,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
         wdb_conn = WazuhDBConnection()
-        before = time()
+        before = datetime.utcnow().timestamp()
 
         try:
             with utils.Timeout(timeout):
@@ -547,7 +546,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         except Exception as e:
             result['error_messages']['others'].append(f'Error while processing agent-info chunks: {e}')
 
-        result['time_spent'] = time() - before
+        result['time_spent'] = datetime.utcnow().timestamp() - before
         wdb_conn.close()
         return result
 
